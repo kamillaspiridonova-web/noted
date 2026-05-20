@@ -1,0 +1,16 @@
+{
+  "name": "noted-android",
+  "version": "1.0.0",
+  "description": "Noted — Android WebView wrapper (built via Capacitor)",
+  "scripts": {
+    "build": "echo 'No local build needed — use GitHub Actions'",
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  }
+}
