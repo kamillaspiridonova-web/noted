@@ -1,0 +1,3 @@
+node_modules/
+# Capacitor generates the android/ directory — do not commit it
+android/
