@@ -1,0 +1,661 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Noted — private local notes app with messenger-style interface
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: folders
+    description: Folder operations
+  - name: notebooks
+    description: Notebook operations
+  - name: notes
+    description: Note operations
+  - name: storage
+    description: File storage operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /folders:
+    get:
+      operationId: listFolders
+      tags: [folders]
+      summary: List all folders
+      responses:
+        "200":
+          description: List of folders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Folder"
+    post:
+      operationId: createFolder
+      tags: [folders]
+      summary: Create a new folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolderInput"
+      responses:
+        "201":
+          description: Created folder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+
+  /folders/{id}:
+    patch:
+      operationId: updateFolder
+      tags: [folders]
+      summary: Update a folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FolderUpdate"
+      responses:
+        "200":
+          description: Updated folder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteFolder
+      tags: [folders]
+      summary: Delete a folder (notebooks in it move to root)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /notebooks:
+    get:
+      operationId: listNotebooks
+      tags: [notebooks]
+      summary: List all notebooks
+      responses:
+        "200":
+          description: List of notebooks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notebook"
+    post:
+      operationId: createNotebook
+      tags: [notebooks]
+      summary: Create a new notebook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotebookInput"
+      responses:
+        "201":
+          description: Created notebook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notebook"
+
+  /notebooks/search:
+    get:
+      operationId: searchDocuments
+      tags: [notebooks]
+      summary: Search document notebooks by keyword
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Keyword to search (case-insensitive substring match on document content)
+      responses:
+        "200":
+          description: Matching documents with a plain-text content snippet
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSearchResult"
+
+  /notebooks/{id}:
+    get:
+      operationId: getNotebook
+      tags: [notebooks]
+      summary: Get a notebook by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notebook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notebook"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateNotebook
+      tags: [notebooks]
+      summary: Update a notebook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotebookUpdate"
+      responses:
+        "200":
+          description: Updated notebook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notebook"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteNotebook
+      tags: [notebooks]
+      summary: Delete a notebook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /notebooks/{id}/notes:
+    get:
+      operationId: listNotes
+      tags: [notes]
+      summary: List notes in a notebook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Keyword search filter (case-insensitive substring match on note content)
+      responses:
+        "200":
+          description: List of notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Note"
+    post:
+      operationId: createNote
+      tags: [notes]
+      summary: Create a note in a notebook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteInput"
+      responses:
+        "201":
+          description: Created note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+
+  /notebooks/{id}/stats:
+    get:
+      operationId: getNotebookStats
+      tags: [notebooks]
+      summary: Get stats for a notebook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Notebook stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookStats"
+
+  /notes/{id}:
+    patch:
+      operationId: updateNote
+      tags: [notes]
+      summary: Update a note's text content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteUpdate"
+      responses:
+        "200":
+          description: Updated note
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Note"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteNote
+      tags: [notes]
+      summary: Delete a note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /notes/recent:
+    get:
+      operationId: getRecentNotes
+      tags: [notes]
+      summary: Get recent notes across all notebooks
+      responses:
+        "200":
+          description: Recent notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NoteWithNotebook"
+
+  /notes/search:
+    get:
+      operationId: searchNotes
+      tags: [notes]
+      summary: Search notes across all notebooks by keyword
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Keyword to search (case-insensitive substring match on note content)
+      responses:
+        "200":
+          description: Matching notes with their notebook info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NoteWithNotebook"
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Folder:
+      type: object
+      required: [id, name, emoji, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FolderInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        emoji:
+          type: string
+
+    FolderUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        emoji:
+          type: string
+
+    Notebook:
+      type: object
+      required: [id, name, emoji, type, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        folderId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        emoji:
+          type: string
+        type:
+          type: string
+          enum: [messenger, document]
+        documentContent:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    NotebookInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        emoji:
+          type: string
+        type:
+          type: string
+          enum: [messenger, document]
+        folderId:
+          type: ["integer", "null"]
+
+    NotebookUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        emoji:
+          type: string
+        folderId:
+          type: ["integer", "null"]
+        documentContent:
+          type: ["string", "null"]
+
+    NotebookStats:
+      type: object
+      required: [noteCount, attachmentCount, lastActivityAt]
+      properties:
+        noteCount:
+          type: integer
+        attachmentCount:
+          type: integer
+        lastActivityAt:
+          type: ["string", "null"]
+          format: date-time
+
+    ListItem:
+      type: object
+      required: [text, checked]
+      properties:
+        text:
+          type: string
+        checked:
+          type: boolean
+
+    Note:
+      type: object
+      required: [id, notebookId, type, content, listItems, attachments, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        notebookId:
+          type: integer
+        type:
+          type: string
+          enum: [text, list]
+        content:
+          type: string
+        listItems:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ListItem"
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    NoteInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [text, list]
+        content:
+          type: string
+        listItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListItem"
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttachmentInput"
+
+    NoteUpdate:
+      type: object
+      properties:
+        content:
+          type: string
+        listItems:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ListItem"
+
+    NoteWithNotebook:
+      type: object
+      required: [id, notebookId, notebookName, notebookEmoji, type, content, listItems, attachments, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        notebookId:
+          type: integer
+        notebookName:
+          type: string
+        notebookEmoji:
+          type: string
+        type:
+          type: string
+          enum: [text, list]
+        content:
+          type: string
+        listItems:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/ListItem"
+        attachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Attachment:
+      type: object
+      required: [id, objectPath, fileName, fileType, fileSize, createdAt]
+      properties:
+        id:
+          type: integer
+        objectPath:
+          type: string
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    AttachmentInput:
+      type: object
+      required: [objectPath, fileName, fileType, fileSize]
+      properties:
+        objectPath:
+          type: string
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: integer
+
+    DocumentSearchResult:
+      type: object
+      required: [id, name, emoji, contentSnippet, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: string
+        contentSnippet:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
