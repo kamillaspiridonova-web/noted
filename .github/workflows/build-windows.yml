@@ -1,0 +1,48 @@
+name: Build Windows Installer
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        working-directory: desktop
+        run: npm install
+      - name: Inject published app URL
+        working-directory: desktop
+        shell: bash
+        run: |
+          APP_URL="${{ secrets.APP_URL }}"
+          if [ -n "$APP_URL" ]; then
+            sed -i "s|https://YOUR_PUBLISHED_APP_URL.replit.app|$APP_URL|g" main.js
+            echo "✅ Injected APP_URL: $APP_URL"
+          else
+            echo "⚠️  APP_URL secret not set — using placeholder URL"
+          fi
+      - name: Build Windows installer (.exe)
+        working-directory: desktop
+        run: npm run dist
+      - name: Upload installer as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: noted-windows-installer
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Noted ${{ github.ref_name }}
+          files: desktop/dist/*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
