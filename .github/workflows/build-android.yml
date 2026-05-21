@@ -10,6 +10,10 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      APP_URL: ${{ secrets.APP_URL }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,23 +29,13 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Capacitor dependencies
         working-directory: android-wrapper
         run: npm install
 
-      - name: Inject published app URL
+      - name: Ensure web assets directory exists
         working-directory: android-wrapper
-        run: |
-          APP_URL="${{ secrets.APP_URL }}"
-          if [ -n "$APP_URL" ]; then
-            sed -i "s|https://YOUR_PUBLISHED_APP_URL.replit.app|$APP_URL|g" capacitor.config.ts
-            echo "✅ Injected APP_URL: $APP_URL"
-          else
-            echo "⚠️  APP_URL secret not set — using placeholder URL"
-          fi
+        run: mkdir -p public
 
       - name: Add Android platform
         working-directory: android-wrapper
@@ -50,6 +44,10 @@ jobs:
       - name: Sync Capacitor
         working-directory: android-wrapper
         run: npx cap sync android
+
+      - name: Make Gradle wrapper executable
+        working-directory: android-wrapper/android
+        run: chmod +x gradlew
 
       - name: Build debug APK
         working-directory: android-wrapper/android
